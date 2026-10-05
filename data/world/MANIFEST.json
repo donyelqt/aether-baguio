@@ -1,0 +1,17 @@
+{
+  "$comment": "World build artifact manifest — FR-1.4. Placeholder: no build has run yet.",
+  "schema_version": 1,
+  "world_version": "0.0.0-unbuilt",
+  "generated_at": null,
+  "generator": null,
+  "seed": null,
+  "extent_m": 7168,
+  "counts": {
+    "road_nodes": 0,
+    "road_segments": 0,
+    "landmarks": 0,
+    "zones": 0
+  },
+  "features": [],
+  "sources": []
+}

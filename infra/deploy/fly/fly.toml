@@ -1,0 +1,65 @@
+# Fly Machines — ARCHITECTURE §12.4.
+#
+# Best balance of the three: dedicated CPU, no request-duration cap, ~$33/mo at
+# performance-1x/2GB — roughly half of Cloud Run's always-warm cost.
+#
+# Same image as every other target. Fly is chosen for operational properties
+# (no timeout, volumes for persistence), not for anything the engine depends on.
+
+app = "aether-baguio-simulation"
+primary_region = "iad"
+
+[build]
+  dockerfile = "../../docker/simulation.Dockerfile"
+  context = "../../.."
+
+[env]
+  PYTHONHASHSEED = "0"
+  OMP_NUM_THREADS = "1"
+  MKL_NUM_THREADS = "1"
+  OPENBLAS_NUM_THREADS = "1"
+
+# performance-1x: dedicated vCPU. `shared-cpu-1x` at 256 MB is the cheapest sane
+# option (~$2/mo) and can boot, but 256 MB is tight for the engine — expect OOM.
+# Use shared CPU only for Core-mode demos.
+[[vm]]
+  size = "performance-1x"
+  cpu_kind = "dedicated"
+  cpus = 1
+  memory_mb = 2048
+
+[[services]]
+  internal_port = 8000
+  protocol = "tcp"
+  # No request cap on Fly — that is the main reason to prefer it over Cloud Run
+  # for a long-lived session.
+  auto_stop_machines = false
+  min_machines_running = 1
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+
+  [[services.http_checks]]
+    interval = "10s"
+    timeout = "3s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/healthz"
+
+[[vm]]
+  size = "performance-1x"
+  processes = ["app"]
+
+[[mounts]]
+  source = "aether_data"
+  destination = "/data"
+
+# Cloud Run's local disk is ephemeral, so session state cannot live only on local
+# disk (ARCH §11, §12.1). A volume is the cheap fix on Fly.
+[volumes]
+  app = "aether_data"

@@ -1,0 +1,52 @@
+# Local full stack — ARCHITECTURE §12.3, TECH_STACK §6.
+#
+#   docker compose -f infra/compose.yaml up --build
+#     web → http://localhost:3000
+#     api → http://localhost:8000  (/healthz, /ws)
+#
+# There is deliberately NO database service here. ARCH §11 defers
+# PostgreSQL/PostGIS/Redis until a requirement breaks without them, and
+# `tests/guards/test_architectural_bans.py` asserts this file never names one.
+# If local setup ever needs Postgres or Redis running, §11 has been violated.
+
+name: aether
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: infra/docker/simulation.Dockerfile
+    ports:
+      - '8000:8000'
+    environment:
+      # Determinism environment (ARCH §8, §8.1). These are not optional tuning:
+      # PYTHONHASHSEED changes string-keyed iteration order between processes,
+      # and BLAS thread counts change float reduction partitioning. Either one
+      # silently breaks replay.
+      PYTHONHASHSEED: '0'
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+    healthcheck:
+      test: ['CMD', 'python', '-c', 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8000/healthz")']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ..
+      dockerfile: infra/docker/web.Dockerfile
+      args:
+        # Consumed at runtime, not build time: Next.js output is
+        # environment-independent, and baking the API URL in would make one
+        # image unusable against a local api and a deployed api.
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - '3000:3000'
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped

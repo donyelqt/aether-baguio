@@ -1,0 +1,55 @@
+# Cloud Run — ARCHITECTURE §12.1, §12.2, §12.4.
+#
+# Supported target, not the mandated one. Costs ~$63/mo always-warm on
+# request-based billing; Fly `performance-1x` is ~$33 and Hetzner CAX11 ~$4.
+# Re-verify before committing — VPS providers reprice more often than
+# hyperscalers.
+#
+# Deploy the SAME image as local. Nothing here changes the engine.
+
+# Two settings are load-bearing, and both are easy to omit:
+#
+#   cpu-throttling: false  Cloud Run does not allocate CPU outside request
+#                       handling by default. The tick loop runs *between*
+#                       requests, so without this the 66 ms budget has no
+#                       platform-level basis at all — the container is throttled
+#                       toward zero while no request is in flight (ARCH §12.1).
+#
+#   min-instances: 1       Cold start kills the session, and sessions are long.
+#                       This forbids scaling to zero; that is the deliberate
+#                       trade (ARCH §12.1).
+#
+# The 3600 s request-duration cap is NOT configurable away. A 3-hour observation
+# session will exceed it, which is why reconnect/resume (FR-6.4) is a Phase 0
+# requirement rather than a later fix (ARCH §12.2).
+
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: aether-simulation
+spec:
+  template:
+    spec:
+      containers:
+        - image: REGION-docker.pkg.dev/PROJECT/aether/simulation:TAG
+          ports:
+            - containerPort: 8000
+          env:
+            - name: PYTHONHASHSEED
+              value: '0'
+            - name: OMP_NUM_THREADS
+              value: '1'
+            - name: MKL_NUM_THREADS
+              value: '1'
+            - name: OPENBLAS_NUM_THREADS
+              value: '1'
+          resources:
+            limits:
+              cpu: '1'
+              memory: 1Gi
+      # Scale-to-zero is forbidden: see above.
+      timeoutSeconds: 3600
+  # Cloud Run "sends requests" vs "allocates CPU always": the container-level
+  # setting is what matters for a background tick loop.
+  cpu_throttling: false
+  timeoutSeconds: 3600
