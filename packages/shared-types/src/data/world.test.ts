@@ -158,7 +158,7 @@ describe('landmarks', () => {
   });
 
   it('fits inside the declared extent including footprints', () => {
-    const { nodes, segments } = buildRoadGraph(project);
+    const { nodes } = buildRoadGraph(project);
     const b = worldBounds(nodes, landmarks);
     expect(b.spanX).toBeLessThan(WORLD_EXTENT_M);
     expect(b.spanZ).toBeLessThan(WORLD_EXTENT_M);

@@ -1,7 +1,6 @@
 'use client';
 
 import { ROAD_WIDTH_M, type RoadClassValue } from '@aether/shared-types';
-import { useMemo } from 'react';
 import * as THREE from 'three';
 import { groundAt } from './Terrain';
 

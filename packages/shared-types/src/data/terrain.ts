@@ -149,12 +149,16 @@ export function sampleHeight(field: Heightfield, x: number, z: number): number {
   const fv = vClamped - i0;
 
   // Indices are in range by construction: uClamped/vClamped are clamped to
-  // [0, res-1] above and i1/j1 are min(i0+1, res-1), so no bounds fallback is
-  // needed here.
-  const h00 = field.heights[i0 * field.res + j0]!;
-  const h01 = field.heights[i0 * field.res + j1]!;
-  const h10 = field.heights[i1 * field.res + j0]!;
-  const h11 = field.heights[i1 * field.res + j1]!;
+  // [0, res-1] above, and i1/j1 are min(i0+1, res-1). Guarding anyway keeps
+  // a malformed field from producing NaN, which would silently poison every
+  // vertex that samples it.
+  const h00 = field.heights[i0 * field.res + j0];
+  const h01 = field.heights[i0 * field.res + j1];
+  const h10 = field.heights[i1 * field.res + j0];
+  const h11 = field.heights[i1 * field.res + j1];
+  if (h00 === undefined || h01 === undefined || h10 === undefined || h11 === undefined) {
+    return BASE_ELEVATION_M;
+  }
 
   const top = h00 + (h01 - h00) * fu;
   const bottom = h10 + (h11 - h10) * fu;
