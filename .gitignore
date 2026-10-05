@@ -40,3 +40,8 @@ data/runs/
 
 # the architecture scaffold plan — a local working document, not pushed
 docs/architecture-scaffold.md
+
+# source geo downloads — licensed, bulky, and regenerable from checksums.
+# the .gitkeep stays tracked so the directory survives.
+data/raw/*
+!data/raw/.gitkeep
