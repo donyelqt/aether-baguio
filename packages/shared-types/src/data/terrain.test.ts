@@ -5,7 +5,7 @@ import {
   RIDGE_HEIGHT_M,
   sampleHeight,
   sampleNormal,
-} from './terrain.js';
+} from './terrain';
 
 const EXTENT = 4608;
 const RES = 129;

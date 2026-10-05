@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { WORLD_EXTENT_M } from '../world.js';
-import { LANDMARKS, ORIGIN, ROADS } from './baguio.js';
+import { WORLD_EXTENT_M } from '../world';
+import { LANDMARKS, ORIGIN, ROADS } from './baguio';
 import {
   buildLandmarks,
   buildRoadGraph,
   createProjector,
   ROAD_WIDTH_M,
   worldBounds,
-} from './project.js';
+} from './project';
 
 /**
  * These tests validate the projection and the graph structure. They are the
@@ -180,6 +180,24 @@ describe('landmarks', () => {
         best = Math.min(best, Math.hypot(n.x - l.x, n.z - l.z));
       }
       expect(best, `${l.id} is ${Math.round(best)} m from the nearest road`).toBeLessThan(250);
+    }
+  });
+
+  it('fits every road node and landmark inside the terrain extent', () => {
+    // Regression: WORLD_EXTENT_M was sized from landmark centres, which left
+    // the eastern third of the network (Camp John Hay, the Mines View spur)
+    // outside the terrain, where sampling clamps and roads sit on the rim.
+    const { nodes } = buildRoadGraph(project);
+    const half = WORLD_EXTENT_M / 2;
+    for (const n of nodes) {
+      expect(Math.abs(n.x), `node ${n.id} x`).toBeLessThanOrEqual(half);
+      expect(Math.abs(n.z), `node ${n.id} z`).toBeLessThanOrEqual(half);
+    }
+    for (const l of landmarks) {
+      expect(
+        Math.max(Math.abs(l.x) + l.halfWidth, Math.abs(l.z) + l.halfDepth),
+        `${l.id} footprint`,
+      ).toBeLessThanOrEqual(half);
     }
   });
 });

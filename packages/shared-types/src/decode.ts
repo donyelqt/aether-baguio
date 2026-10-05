@@ -13,7 +13,7 @@ import {
   PROTOCOL_VERSION,
   SCENE_RECORD_SIZE,
   type SceneRecord,
-} from './wire.js';
+} from './wire';
 
 /** A decoded snapshot: entities plus active scene state. */
 export interface Snapshot {

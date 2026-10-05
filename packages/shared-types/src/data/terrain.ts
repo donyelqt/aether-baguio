@@ -17,9 +17,6 @@ export const BASE_ELEVATION_M = 1400;
 /** Peak additional height of the eastern ridge. */
 export const RIDGE_HEIGHT_M = 320;
 
-/** Elevation sampled outside the generated extent, so the rim never ends flat. */
-const FALLBACK_ELEVATION_M = BASE_ELEVATION_M + RIDGE_HEIGHT_M * 0.5;
-
 /**
  * Integer hash → [0, 1). Uses integer arithmetic only, so it is stable across
  * platforms and independent of `PYTHONHASHSEED` or any language's string hash.
@@ -109,7 +106,9 @@ export function generateHeightfield(extentM: number, res: number, seed = 1337): 
       // Radial rise from the CBD centre, biased east and north.
       const east = x / half; // -1 west .. +1 east
       const north = z / half;
-      // Squared so the western side stays gentler, as in reality.
+      // Radial distance from the centre, weighted so the north-south axis
+      // contributes less than east-west. The weighting is symmetric, so the
+      // east and west edges reach the same height; this is not an asymmetry.
       const bowl = Math.sqrt(east * east * 0.85 + north * north * 0.55);
 
       // Rim elevation. Smoothstep keeps the city floor flat and the rim steep.
@@ -149,10 +148,13 @@ export function sampleHeight(field: Heightfield, x: number, z: number): number {
   const fu = uClamped - j0;
   const fv = vClamped - i0;
 
-  const h00 = field.heights[i0 * field.res + j0] ?? FALLBACK_ELEVATION_M;
-  const h01 = field.heights[i0 * field.res + j1] ?? FALLBACK_ELEVATION_M;
-  const h10 = field.heights[i1 * field.res + j0] ?? FALLBACK_ELEVATION_M;
-  const h11 = field.heights[i1 * field.res + j1] ?? FALLBACK_ELEVATION_M;
+  // Indices are in range by construction: uClamped/vClamped are clamped to
+  // [0, res-1] above and i1/j1 are min(i0+1, res-1), so no bounds fallback is
+  // needed here.
+  const h00 = field.heights[i0 * field.res + j0]!;
+  const h01 = field.heights[i0 * field.res + j1]!;
+  const h10 = field.heights[i1 * field.res + j0]!;
+  const h11 = field.heights[i1 * field.res + j1]!;
 
   const top = h00 + (h01 - h00) * fu;
   const bottom = h10 + (h11 - h10) * fu;
@@ -162,8 +164,10 @@ export function sampleHeight(field: Heightfield, x: number, z: number): number {
 /**
  * Central-difference normal, used for terrain shading.
  *
- * The step is one sample, not one metre, so the result is independent of the
- * field resolution — a metre-step would alias badly on a coarse grid.
+ * The step is one grid sample rather than one metre. That keeps the stencil
+ * aligned with the data and avoids aliasing, but it does mean the normal is
+ * resolution-dependent: a finer field samples a tighter neighbourhood. This is
+ * intended, since finer terrain should shade finer detail.
  */
 export function sampleNormal(
   field: Heightfield,

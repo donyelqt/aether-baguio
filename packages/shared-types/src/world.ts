@@ -26,12 +26,14 @@ export const WORLD_ORIGIN = {
  * Extent of the generated world, in metres. Terrain covers a square of this
  * size centred on the origin.
  *
- * The CBD landmark set spans roughly 4.24 km east-west including footprint
- * half-extents, so this is sized to contain the map rather than clip it. A
- * power-of-two value was rejected: it would have been 8192 m and doubled the
- * terrain vertex count for no benefit.
+ * Sized from the measured data rather than estimated. Road nodes reach
+ * x = +3366 m (Camp John Hay and the Mines View spur) and landmarks reach
+ * x = +3486 m including footprint half-widths, so the terrain must span at
+ * least +/-3486 m. The previous value of 4608 clipped the eastern third of
+ * the network onto the rim plateau, where sampling clamps. 7168 m is the
+ * next comfortable step above the requirement.
  */
-export const WORLD_EXTENT_M = 4608;
+export const WORLD_EXTENT_M = 7168;
 
 /** Road classes. Lane count derives from these in the Phase 1 traffic model. */
 export const RoadClass = {

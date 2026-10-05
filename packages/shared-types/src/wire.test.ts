@@ -1,12 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { interpolatePosition, SnapshotDecoder } from './decode.js';
-import {
-  ENTITY_STRIDE,
-  FrameFlag,
-  HEADER_SIZE,
-  PROTOCOL_VERSION,
-  SCENE_RECORD_SIZE,
-} from './wire.js';
+import { interpolatePosition, SnapshotDecoder } from './decode';
+import { ENTITY_STRIDE, FrameFlag, HEADER_SIZE, PROTOCOL_VERSION, SCENE_RECORD_SIZE } from './wire';
 
 /**
  * These tests catch drift between the TypeScript decoder and the Python encoder
@@ -98,11 +92,25 @@ describe('wire layout', () => {
     expect(e.state).toBe(3);
   });
 
-  it('preserves heading to u16 precision (2π/65536)', () => {
+  it('quantises heading to u16 across the full range', () => {
+    // pi/2 is exactly on the lattice (16384/65536 * 2pi), so asserting only on
+    // it would pass even with no quantisation at all. These headings sit
+    // between lattice points, where the error is genuinely non-zero.
+    const headings = [1.0, 0.7, Math.PI / 3, 2.9, 0.123];
+    const step = (Math.PI * 2) / 65536;
+    for (const heading of headings) {
+      const frame = buildFrame([{ id: 1, x: 0, y: 0, z: 0, heading }]);
+      const e = new SnapshotDecoder(1024).decode(frame).entities[0]!;
+      // Half a step is the worst case for round-to-nearest.
+      expect(Math.abs(e.heading - heading)).toBeLessThanOrEqual(step / 2);
+      expect(Math.abs(e.heading - heading)).toBeGreaterThan(0);
+    }
+  });
+
+  it('returns exactly pi/2 for a value on the lattice', () => {
     const frame = buildFrame([{ id: 1, x: 0, y: 0, z: 0, heading: Math.PI / 2 }]);
     const e = new SnapshotDecoder(1024).decode(frame).entities[0]!;
-    // Max quantisation error is half a step: (2π/65536) / 2 ≈ 2.4e-5
-    expect(Math.abs(e.heading - Math.PI / 2)).toBeLessThan(2.5e-5);
+    expect(e.heading).toBeCloseTo(Math.PI / 2, 12);
   });
 
   it('round-trips a full 500-entity frame within the section 7.3 budget', () => {
