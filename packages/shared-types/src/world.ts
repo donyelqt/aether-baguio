@@ -7,20 +7,31 @@
  * float precision at EPSG:4326 is unacceptable at city scale.
  */
 
-/** Reference point for the local ENU frame — Burnham Park, Baguio. */
+/**
+ * Reference point for the local ENU frame — Burnham Park, Baguio.
+ * From OpenStreetMap (Nominatim, retrieved 2026-10-06).
+ */
 export const WORLD_ORIGIN = {
   /** Latitude in degrees (WGS84). Provenance only; not used at runtime. */
-  lat: 16.4422,
+  lat: 16.4080101,
   /** Longitude in degrees (WGS84). Provenance only; not used at runtime. */
-  lon: 120.5711,
+  lon: 120.5959849,
   /** Metres east of origin. */
   x: 0,
   /** Metres north of origin. */
   z: 0,
 } as const;
 
-/** Extent of the generated world, in metres. Terrain covers [0, EXTENT]. */
-export const WORLD_EXTENT_M = 4096;
+/**
+ * Extent of the generated world, in metres. Terrain covers a square of this
+ * size centred on the origin.
+ *
+ * The CBD landmark set spans roughly 4.24 km east-west including footprint
+ * half-extents, so this is sized to contain the map rather than clip it. A
+ * power-of-two value was rejected: it would have been 8192 m and doubled the
+ * terrain vertex count for no benefit.
+ */
+export const WORLD_EXTENT_M = 4608;
 
 /** Road classes. Lane count derives from these in the Phase 1 traffic model. */
 export const RoadClass = {
