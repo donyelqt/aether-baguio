@@ -34,3 +34,9 @@ Thumbs.db
 # replays + run output (regenerable from the event log)
 data/runs/
 *.replay.jsonl
+
+# agent working files (local plans, planner scratch, checkpoints)
+/.kilo/
+
+# the architecture scaffold plan — a local working document, not pushed
+docs/architecture-scaffold.md
