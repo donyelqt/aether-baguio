@@ -8,8 +8,8 @@
  * are projected once at load.
  */
 
-import type { Landmark, RoadClassValue, RoadNode, RoadSegment } from '../world.js';
-import { LANDMARKS, type LatLon, ORIGIN, ROADS } from './baguio.js';
+import type { Landmark, RoadClassValue, RoadNode, RoadSegment } from '../world';
+import { LANDMARKS, type LatLon, ORIGIN, ROADS } from './baguio';
 
 /**
  * Metres per degree of latitude at the origin latitude. Uses the standard

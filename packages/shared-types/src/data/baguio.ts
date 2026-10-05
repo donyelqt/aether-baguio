@@ -1,14 +1,14 @@
 /**
  * Central Baguio world data.
  *
- * Coordinates are WGS84 degrees from OpenStreetMap (Nominatim, retrieved
+ * Landmark coordinates come from OpenStreetMap via Nominatim (retrieved
  * 2026-10-06) and are projected into a local metre frame at load time by
- * `baguio.ts`. Nothing here is hand-placed: every position traces to a real
- * place, so the map is recognisable rather than plausible.
+ * `project.ts`. Road vertices are hand-authored polylines: they trace the real
+ * street layout through the CBD so the network reads as Baguio, but their
+ * intermediate points are interpolated and are not survey data.
  *
- * The road network is a stylised skeleton of the CBD, not a survey extract.
- * GIS ingestion is deferred (PRD §13); Phase 1 replaces this with the real
- * graph without changing any consumer.
+ * GIS ingestion is deferred (PRD §13). Phase 1 replaces the road skeleton with
+ * a real extract without changing any consumer.
  */
 
 export interface LatLon {
