@@ -1,0 +1,36 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# builds
+.next/
+out/
+dist/
+*.tsbuildinfo
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# env / secrets — never commit
+.env
+.env.local
+.env.*.local
+
+# research artifacts (scratch files, not project sources)
+gdalv.json
+pyrel.json
+sched.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# replays + run output (regenerable from the event log)
+data/runs/
+*.replay.jsonl
