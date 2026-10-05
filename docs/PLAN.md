@@ -2,7 +2,7 @@
 
 **Status:** Active
 **Last audited:** 2026-10-06 against `main` @ `88b4db4`
-**Governing documents:** [`docs/PRD.md`](../docs/PRD.md) · [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md) · [`docs/TECH_STACK.md`](../docs/TECH_STACK.md)
+**Governing documents:** [`docs/PRD.md`](PRD.md) · [`docs/ARCHITECTURE.md`](ARCHITECTURE.md) · [`docs/TECH_STACK.md`](TECH_STACK.md)
 
 ---
 
@@ -170,15 +170,56 @@ but not installed.
 | # | Item | Status | Evidence |
 |---|---|---|---|
 | I.1 | pnpm workspace + Biome + strict TS | `[x]` | PR #1, 29 files linted |
-| I.2 | Binary wire protocol | `[x]` | Layout asserted in `wire.test.ts` (28/44/14 B). **No Python encoder exists yet** — the constants were cross-checked ad hoc against `struct.calcsize`, not by a committed test |
+| I.2 | Binary wire protocol | `[x]` | Layout asserted in `wire.test.ts` **and** now cross-checked by a committed test against the Python encoder (`test_cross_language_sync.py` reads `wire.ts` and asserts 28/44/14 plus the tick rate). The previous gap — "cross-checked ad hoc, not by a committed test" — is closed. `encode_frame`/`encode_header` are real, not size-only |
 | I.3 | Deterministic terrain | `[x]` | `terrain.test.ts` — same seed yields equal elevation arrays |
 | I.4 | Connected road graph | `[x]` | `world.test.ts` — proven single component |
 | I.5 | Landmark reachability | `[x]` | Every landmark < 250 m from a road node |
 | I.6 | Extent contains the map | `[x]` | Regression test asserts every node and footprint fits. The overflow it guards against was measured during the PR #4 audit (~1 km east of the old extent) and is not recorded in the test itself |
-| I.7 | CI quality gates | `[ ]` | **No `.github/workflows`.** No CI at all |
-| I.8 | Load-time instrumentation | `[ ]` | Needed for Criterion 1 |
-| I.9 | `apps/simulation` (FastAPI engine) | `[ ]` | Directory does not exist |
-| I.10 | `data/world/` build artifacts | `[ ]` | Directory does not exist |
+| I.7 | CI quality gates | `[x]` | `.github/workflows/ci.yaml` — 3 jobs: `gates` (typecheck, biome, vitest, web build), `simulation` (pytest, `mypy --strict` on `engine/`+`wire/`+`ai/`, ruff), `determinism` (suite under `PYTHONHASHSEED` 0/12345/999 + BLAS-pinned). **Not yet observed on GitHub** — written and run locally, never executed by a remote runner |
+| I.8 | Load-time instrumentation | `[ ]` | Needed for Criterion 1. Still absent |
+| I.9 | `apps/simulation` (FastAPI engine) | `[~]` | **Skeleton only, no tick loop.** `app/main.py` serves `/healthz`; `/ws` accepts then closes with a stated reason. Engine stages (`clock`, `world`, `scheduler`, `traffic`, `routing`, `events`, `publisher`) are typed stubs that raise `NotImplementedError`. `wire/protocol.py` is real and tested; `digest.py`, `events.py`, `scheduler.stagger_bucket` are real. 100 tests pass |
+| I.10 | `data/world/` build artifacts | `[~]` | Directory + `MANIFEST.json` exist, but `"features": []` — **no build has run**. FR-1.4 unsatisfied |
+
+### Scaffold verification — 2026-10-06
+
+The architecture scaffold (full ARCH §3 layout, `apps/simulation` skeleton,
+`infra/`, `data/`, `assets/`, `benchmarks/`, CI) landed with **zero changes to
+any existing render source**. `git diff --stat` touches only `.gitignore`.
+
+> **Provenance note.** The `spec/` → `docs/` move of this file was already in the
+> working tree before the scaffold work began — it was not authored as part of it,
+> and this PR is where it first becomes tracked. Relative links were adjusted to
+> match (`../docs/X.md` → `X.md`). Flagging it so the move is a reviewed decision
+> rather than a silent one.
+
+| Gate | Command | Result |
+|---|---|---|
+| Types | `pnpm -r typecheck` | 0 errors |
+| Lint (TS) | `pnpm lint` | 0 findings, 37 files |
+| Tests (TS) | `pnpm -r test` | 54 passed (45 shared-types, 9 web) — unchanged from baseline |
+| Build | `pnpm --filter web build` | succeeds |
+| Tests (Py) | `pytest apps/simulation` | 100 passed, 0 skipped |
+| Types (Py) | `mypy --strict engine/ wire/ ai/` | clean, 16 files |
+| Lint (Py) | `ruff check` + `ruff format --check` | clean, 35 files |
+| Determinism | `pytest tests/determinism` × 3 hash seeds + BLAS-pinned | 13 passed each |
+
+**Unverified — do not treat as passing:**
+
+- **Browser probe.** No browser automation was available, so the runtime gate
+  (0 console errors, context not lost, ≤ 120 draw calls) did **not** run. The
+  scene is untouched and the build is clean, but "looks right" is not evidence.
+  Run it before merging.
+- **Docker build.** `docker compose config` validates and the compose guards
+  pass, but no image was built. `docker compose -f infra/compose.yaml up --build`
+  is unproven.
+
+**Guard tests were themselves mutation-tested.** A guard that cannot fail is
+worthless, so each was verified to fire: dropping the entity pad (44→42 B),
+adding a `postgres` service, `np.random` in `engine/`, `time.time` in `engine/`,
+`langgraph` outside `app/ai/`, `engine/` importing `app.ai`, and TS stride
+drifting to 46 — all caught, all reverted. The `np.random` guard initially did
+**not** fire (token-joining broke dotted-name matching); that was a real gap,
+found and fixed.
 
 ---
 
