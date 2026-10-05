@@ -1,0 +1,162 @@
+# Quality gates — TECH_STACK §9, PRD NFR-1.
+#
+# Two jobs, because they fail for different reasons and have different costs:
+#
+#   gates      — fast, every push and PR. Types, lint, tests, build.
+#   determinism— the replay gate. Runs the suite under three PYTHONHASHSEEDs.
+#
+# There was no CI before this file, which is why a scratch file
+# (`_tmp_terr.mjs`) could merge in PR #4. These gates are what stop the next one.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A new push makes in-flight runs for the same ref obsolete. Saves CI minutes
+# on stacked PRs without ever reporting a stale result as current.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Node 24 is LTS "Krypton". Node 26 is current but NOT LTS — do not target it
+  # (TECH_STACK §1.1).
+  NODE_VERSION: '24'
+
+jobs:
+  gates:
+    name: types · lint · tests · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+        # No `version:` input on purpose. The action then reads
+        # `packageManager` from package.json, which is the single source of truth
+        # for the pin. Hard-coding a version here created a second pin that
+        # disagreed with it (9.5.0 vs 9.5.0-beta.1) — and with corepack enabled
+        # that disagreement fails the install rather than merely drifting.
+        #
+        # Note for a future change: TECH_STACK §6 says pnpm 10.x while
+        # package.json pins 9.5.0-beta.1. That drift is unresolved and belongs in
+        # its own ADR, not in a CI file. Bump package.json, not this workflow.
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # Run separately from the build on purpose: TS 7 is the native Go compiler
+      # and has no JavaScript compiler API, so Next.js invokes the `tsc` CLI.
+      # Keeping this its own step means a type error is reported as a type error
+      # rather than as "next build failed" (TECH_STACK §5.1).
+      - name: Typecheck
+        run: pnpm -r typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm -r test
+
+      - name: Build
+        run: pnpm --filter web build
+
+  simulation:
+    name: python suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          # 3.13, not 3.14: 3.13 is the last version with conventionally-built
+          # wheels across the pinned geo stack, and pyogrio's cp314 coverage is
+          # free-threaded-only (TECH_STACK §5.2).
+          python-version: '3.13'
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e 'apps/simulation[dev]'
+
+      - name: Pytest
+        working-directory: apps/simulation
+        run: pytest -q
+
+      # `--strict` on engine/, wire/, ai/ only (TECH_STACK §8). The stubs and the
+      # gateway's HTTP surface are excluded on purpose: strict-typing a
+      # not-yet-written layer produces assertions about code that does not exist.
+      - name: Types (mypy --strict)
+        run: mypy --strict apps/simulation/app/engine apps/simulation/app/wire apps/simulation/app/ai
+
+      - name: Ruff
+        run: ruff check apps/simulation
+      - name: Ruff format
+        run: ruff format --check apps/simulation
+
+  determinism:
+    name: replay determinism (3 hash seeds)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e 'apps/simulation[dev]'
+
+      # The determinism gate — ARCH §8.3, PRD Criterion 11.
+      #
+      # WHY THREE RUNS. Two runs inside one interpreter share a single
+      # PYTHONHASHSEED, so a `set`/`dict` iteration-order dependency affects both
+      # identically: the comparison passes while the bug is live. Only separate
+      # processes with different seeds can catch hash-order nondeterminism.
+      #
+      # All three must pass. One green run is not a pass.
+      - name: PYTHONHASHSEED=0
+        working-directory: apps/simulation
+        env:
+          PYTHONHASHSEED: '0'
+        run: pytest tests/determinism -q
+
+      - name: PYTHONHASHSEED=12345
+        working-directory: apps/simulation
+        env:
+          PYTHONHASHSEED: '12345'
+        run: pytest tests/determinism -q
+
+      - name: PYTHONHASHSEED=999
+        working-directory: apps/simulation
+        env:
+          PYTHONHASHSEED: '999'
+        run: pytest tests/determinism -q
+
+      # BLAS/NumPy threading vars, same reason (ARCH §8.1). A tick loop that
+      # loses reproducibility because someone dropped an env var is worse than
+      # one that refuses to start.
+      - name: Determinism under pinned BLAS threading
+        working-directory: apps/simulation
+        env:
+          PYTHONHASHSEED: '0'
+          OMP_NUM_THREADS: '1'
+          MKL_NUM_THREADS: '1'
+          OPENBLAS_NUM_THREADS: '1'
+        run: pytest tests/determinism -q
