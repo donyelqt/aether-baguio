@@ -81,11 +81,17 @@ export function buildRoadGraph(project: (p: LatLon) => { x: number; z: number })
 
   for (const road of ROADS) {
     for (let i = 0; i < road.path.length - 1; i++) {
-      const from = nodeAt(road.path[i]!);
-      const to = nodeAt(road.path[i + 1]!);
+      const start = road.path[i];
+      const end = road.path[i + 1];
+      // A malformed polyline with a missing vertex is skipped rather than
+      // asserted through: a bad data file should drop a road, not throw.
+      if (start === undefined || end === undefined) continue;
+      const from = nodeAt(start);
+      const to = nodeAt(end);
       if (from === to) continue;
-      const a = nodes[from]!;
-      const b = nodes[to]!;
+      const a = nodes[from];
+      const b = nodes[to];
+      if (a === undefined || b === undefined) continue;
       segments.push({
         id: `${road.id}:${i}`,
         from,

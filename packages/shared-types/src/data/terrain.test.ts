@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { WORLD_EXTENT_M } from '../world';
 import {
   BASE_ELEVATION_M,
   generateHeightfield,
@@ -7,7 +8,9 @@ import {
   sampleNormal,
 } from './terrain';
 
-const EXTENT = 4608;
+// Use the shipped extent rather than a local constant: a hardcoded copy drifts
+// from world.ts and the tests then validate a terrain nobody renders.
+const EXTENT = WORLD_EXTENT_M;
 const RES = 129;
 
 /** Builds the standard field once; generation is the expensive part. */
