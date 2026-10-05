@@ -6,7 +6,15 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**/*.ts", "**/*.tsx", "**/*.json", "!**/node_modules", "!**/.next", "!**/dist"]
+    "includes": [
+      "**/*.ts",
+      "**/*.tsx",
+      "**/*.json",
+      "!**/node_modules",
+      "!**/.next",
+      "!**/dist",
+      "!**/next-env.d.ts"
+    ]
   },
   "formatter": {
     "enabled": true,
