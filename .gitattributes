@@ -1,0 +1,10 @@
+# Normalize line endings on checkin; avoid CRLF churn in diffs on Windows.
+* text=auto eol=lf
+
+# Lockfiles and generated files must not be line-ending normalised.
+pnpm-lock.yaml -text
+*.jsonl -text
+*.glb binary
+*.bin binary
+*.png binary
+*.jpg binary
