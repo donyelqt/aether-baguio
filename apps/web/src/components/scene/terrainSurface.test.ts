@@ -26,6 +26,50 @@ describe('terrain surface colour', () => {
     expect(spread(steep)).toBeLessThan(spread(flat));
   });
 
+  it('spans a real gradient across the city bowl, not just the distant ridge', () => {
+    // The defect: normalising the ramp to the full ridge put the whole developed
+    // bowl at t=0.00-0.32, never crossing the LOW->MID midpoint, so everything
+    // the camera looks at was one green. The global-spread test below still
+    // passed because the far ridge varies; this samples only the city.
+    const field = generateHeightfield(WORLD_EXTENT_M, 128, 1337);
+    const geo = buildTerrainGeometry(field);
+    applyTerrainColours(geo);
+
+    const position = geo.attributes.position;
+    const colours = geo.attributes.color;
+    if (position === undefined || colours === undefined) {
+      throw new Error('terrain is missing colour or position attributes');
+    }
+
+    // CityScene orbits FOCUS = (200, 300); sample everything within 1,500 m.
+    // At res 128 that is 2,223 vertices spanning 1,393-1,425 m.
+    //
+    // A distinct-colour count is useless here: the old ramp still produced 82
+    // distinct bytes. Measured on the real mesh, the ridge-normalised ramp gives
+    // a green spread of 0.0028 and a luminance spread of 0.0032; the bowl ramp
+    // gives 0.0293 and 0.0336. Both thresholds sit between the two, so the test
+    // fails on the regression and passes on the fix without pinning a palette.
+    const greens: number[] = [];
+    const lums: number[] = [];
+    for (let i = 0; i < colours.count; i++) {
+      const x = position.getX(i);
+      const z = position.getZ(i);
+      if (Math.hypot(x - 200, z - 300) > 1500) continue;
+      greens.push(colours.getY(i));
+      lums.push(lum({ r: colours.getX(i), g: colours.getY(i), b: colours.getZ(i) }));
+    }
+
+    expect(greens.length).toBeGreaterThan(1000);
+    const span = (vals: number[]): number => {
+      vals.sort((a, b) => a - b);
+      return (
+        (vals[Math.floor(vals.length * 0.95)] ?? 0) - (vals[Math.floor(vals.length * 0.05)] ?? 0)
+      );
+    };
+    expect(span(greens)).toBeGreaterThan(0.015);
+    expect(span(lums)).toBeGreaterThan(0.015);
+  });
+
   it('does not produce a constant colour across the real mesh', () => {
     // The defect being fixed: one flat green across 7 km with no shading
     // signal. A constant surface gives zero spread in every channel.
