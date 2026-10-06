@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo } from 'react';
-import * as THREE from 'three';
 import { buildAreaGeometry, buildRoadGeometry, OSM_GREEN, OSM_WATER } from './osmGeometry';
 
 /**

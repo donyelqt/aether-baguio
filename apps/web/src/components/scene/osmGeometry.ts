@@ -53,7 +53,12 @@ function appendRibbon(
   let previous: { x: number; z: number } | null = null;
 
   for (let i = 0; i < points.length; i++) {
-    const { x, z } = project({ lat: points[i]![0], lon: points[i]![1] });
+    // `points` is a non-empty readonly tuple array; the generated data always
+    // has at least two entries per way, and `appendRibbon` returns early
+    // below that. The clamp on `i` is what makes the neighbour lookups safe.
+    const cur = points[i];
+    if (cur === undefined) continue;
+    const { x, z } = project({ lat: cur[0], lon: cur[1] });
 
     // Skip anything with no terrain beneath it.
     if (Math.abs(x) > LIMIT || Math.abs(z) > LIMIT) {
@@ -63,9 +68,10 @@ function appendRibbon(
 
     // Perpendicular in the XZ plane, from the local direction. Using the
     // neighbours rather than the previous vertex keeps the normal correct at
-    // the ends of a polyline.
-    const before = points[Math.max(0, i - 1)]!;
-    const after = points[Math.min(points.length - 1, i + 1)]!;
+    // the ends of a polyline. The clamps guarantee both indices are in range.
+    const before = points[Math.max(0, i - 1)];
+    const after = points[Math.min(points.length - 1, i + 1)];
+    if (before === undefined || after === undefined) continue;
     const p = project({ lat: before[0], lon: before[1] });
     const q = project({ lat: after[0], lon: after[1] });
     const dx = q.x - p.x;
@@ -128,8 +134,10 @@ export function buildAreaGeometry(
   const buf: RibbonBuffers = { positions: [], indices: [] };
 
   for (const area of areas) {
-    const pts = area.points.filter((_, i) => {
-      const { x, z } = project({ lat: area.points[i]![0], lon: area.points[i]![1] });
+    // Drop vertices with no terrain under them, and keep only the surviving
+    // ones so the fan below triangulates a contiguous ring.
+    const pts = area.points.filter((p) => {
+      const { x, z } = project({ lat: p[0], lon: p[1] });
       return Math.abs(x) <= LIMIT && Math.abs(z) <= LIMIT;
     });
     if (pts.length < 3) continue;

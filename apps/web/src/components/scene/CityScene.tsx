@@ -1,6 +1,6 @@
 'use client';
 
-import { buildRoadGraph, createProjector, RoadClass, WORLD_EXTENT_M } from '@aether/shared-types';
+import { createProjector, WORLD_EXTENT_M } from '@aether/shared-types';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
@@ -27,9 +27,6 @@ import { Terrain } from './Terrain';
 const HOURS_PER_SECOND = 0.9;
 
 const project = createProjector();
-const graph = buildRoadGraph(project);
-
-const ROAD_CLASSES = [RoadClass.ARTERIAL, RoadClass.COLLECTOR, RoadClass.LOCAL] as const;
 
 /** Where the camera orbits, and the point aerial perspective is measured from. */
 const FOCUS = new THREE.Vector3(200, 0, 300);
