@@ -4,11 +4,12 @@ import { buildRoadGraph, createProjector, RoadClass, WORLD_EXTENT_M } from '@aet
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import { CameraRig } from './CameraRig';
 import { skyColors, sunPosition } from './DayNight';
 import { Landmarks } from './Landmarks';
 import { buildRoadGeometry, ROAD_COLOR } from './roads';
 import { SceneProbe } from './SceneProbe';
-import { groundAt, Terrain } from './Terrain';
+import { Terrain } from './Terrain';
 
 /**
  * The city scene.
@@ -29,11 +30,8 @@ const graph = buildRoadGraph(project);
 
 const ROAD_CLASSES = [RoadClass.ARTERIAL, RoadClass.COLLECTOR, RoadClass.LOCAL] as const;
 
-/** Distance the observer camera sits from the city centre. */
+/** Distance the observer camera sits from the city centre; drives fog placement. */
 const CAMERA_DISTANCE_M = 2100;
-
-/** Camera height above the terrain at the centre, in metres. */
-const CAMERA_HEIGHT_M = 900;
 
 function Roads() {
   const geometries = useMemo(
@@ -118,28 +116,6 @@ function DayNightCycle({ paused }: { paused: boolean }) {
       />
     </group>
   );
-}
-
-/** Slow orbit, used until the Phase 1 observer camera lands. */
-function CameraRig() {
-  const { camera } = useThree();
-
-  useEffect(() => {
-    camera.position.set(CAMERA_DISTANCE_M, groundAt(0, 0) + CAMERA_HEIGHT_M, CAMERA_DISTANCE_M);
-    camera.lookAt(0, groundAt(0, 0), 0);
-    camera.updateProjectionMatrix();
-  }, [camera]);
-
-  useFrame((_, delta) => {
-    // Orbit about the city centre.
-    const radius = Math.hypot(camera.position.x, camera.position.z);
-    const angle = Math.atan2(camera.position.z, camera.position.x) + delta * 0.02;
-    camera.position.x = Math.cos(angle) * radius;
-    camera.position.z = Math.sin(angle) * radius;
-    camera.lookAt(0, groundAt(0, 0), 0);
-  });
-
-  return null;
 }
 
 export function CityScene({ paused = false }: { paused?: boolean }) {
