@@ -45,6 +45,10 @@ export function SceneProbe() {
         `drawn=${gl.info.render.triangles}`,
         `bg=${scene.background instanceof THREE.Color ? scene.background.getHexString() : 'none'}`,
         `cam=${Math.round(camera.position.x)},${Math.round(camera.position.y)},${Math.round(camera.position.z)}`,
+        // Fog and tone mapping are the two settings most easily left on a stale
+        // constant, so both are published: fog must track the live camera.
+        `fog=${scene.fog instanceof THREE.Fog ? `${Math.round(scene.fog.near)}-${Math.round(scene.fog.far)}` : 'none'}`,
+        `tone=${gl.toneMapping === THREE.NoToneMapping ? 'none' : gl.toneMapping}`,
         `lost=${gl.getContext().isContextLost()}`,
       ].join(' ');
     };
