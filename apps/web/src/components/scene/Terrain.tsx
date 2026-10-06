@@ -7,7 +7,7 @@ import {
   WORLD_EXTENT_M,
 } from '@aether/shared-types';
 import { useMemo } from 'react';
-import * as THREE from 'three';
+import { buildTerrainGeometry } from './terrainGeometry';
 
 /**
  * Terrain surface.
@@ -42,33 +42,9 @@ export function groundAt(x: number, z: number): number {
 }
 
 export function Terrain() {
-  const geometry = useMemo(() => {
-    const field = terrainField();
-    const res = field.res;
-    const half = field.extentM / 2;
-
-    const geo = new THREE.PlaneGeometry(field.extentM, field.extentM, res - 1, res - 1);
-    geo.rotateX(-Math.PI / 2);
-
-    // PlaneGeometry is row-major with row 0 at +Z after the rotation, and the
-    // heightfield is stored the same way, so rows map directly. Each vertex is
-    // sampled rather than indexed: bilinear sampling costs nothing at build
-    // time and keeps this correct regardless of field indexing conventions.
-    const pos = geo.attributes.position as THREE.BufferAttribute;
-    for (let row = 0; row < res; row++) {
-      const z = half - (row / (res - 1)) * field.extentM;
-      for (let col = 0; col < res; col++) {
-        const x = -half + (col / (res - 1)) * field.extentM;
-        pos.setY(row * res + col, sampleHeight(field, x, z));
-      }
-    }
-
-    pos.needsUpdate = true;
-    geo.computeVertexNormals();
-    geo.computeBoundingSphere();
-    return geo;
-  }, []);
-
+  // Geometry comes from the shared builder so the test suite exercises the
+  // same code path the renderer does.
+  const geometry = useMemo(() => buildTerrainGeometry(terrainField()), []);
   return (
     <mesh geometry={geometry} receiveShadow>
       <meshStandardMaterial color="#5f7d54" roughness={0.95} metalness={0} />
