@@ -15,10 +15,22 @@ import { groundAt } from './Terrain';
  * segment, which matters against the 120-draw-call budget in NFR-3.
  */
 
+/**
+ * Road surface by class.
+ *
+ * The previous three greys spanned 30 luminance levels end to end and were
+ * indistinguishable past a few hundred metres, so the network read as one
+ * undifferentiated mat. These span 62, and lean on how the classes actually
+ * differ in a mountain city: arterials are wide, newer and concrete-toned;
+ * local lanes are narrower, older and darker asphalt.
+ *
+ * Arterial sits above the terrain's luminance so it reads as a cutting through
+ * the green, and local sits below it.
+ */
 export const ROAD_COLOR: Record<RoadClassValue, number> = {
-  arterial: 0x3a3a3c,
-  collector: 0x4a4a4d,
-  local: 0x58585c,
+  arterial: 0x8f9299,
+  collector: 0x6e7278,
+  local: 0x51545a,
 };
 
 /** Lift above the terrain, in metres, to avoid z-fighting with the ground. */
