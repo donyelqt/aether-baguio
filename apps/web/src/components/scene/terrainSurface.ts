@@ -1,6 +1,5 @@
 'use client';
 
-import { BASE_ELEVATION_M, RIDGE_HEIGHT_M } from '@aether/shared-types';
 import * as THREE from 'three';
 
 /**
@@ -42,13 +41,33 @@ const ROCK = new THREE.Color('#7a7368');
  */
 const ROCK_NORMAL_Y = 0.985;
 
+/**
+ * Ramp bounds, in metres above sea level.
+ *
+ * Measured from the built mesh at res 128: 2,223 vertices lie within 1,500 m of
+ * the city focus, spanning 1,393 m to 1,425 m. The bowl is far flatter than the
+ * field's 320 m ridge suggests, so a ridge-normalised ramp left the entire city
+ * at t<0.12. These bounds cover the measured band plus headroom, putting the
+ * city across the full gradient.
+ */
+const CBD_FLOOR_M = 1394;
+const BOWL_SPAN_M = 40;
+
 /** Normal-Y span the rock blend covers, from the measured minimum. */
 const STEEP_FLOOR_Y = 0.962;
 
 export function terrainColorAt(height: number, normalY: number): THREE.Color {
-  // Altitude ramp, normalised across the field's own range so it stays correct
-  // if the ridge height changes.
-  const t = THREE.MathUtils.clamp((height - BASE_ELEVATION_M) / (RIDGE_HEIGHT_M * 0.85), 0, 1);
+  // Altitude ramp over the band the camera actually occupies, not the whole field.
+  //
+  // Normalising to the full ridge meant the city floor sat at t=0.00 and the
+  // built-up bowl only reached t=0.21, so 13% of the field — everything inside
+  // 1,500 m — rendered as pure LOW green with no altitude variation at all.
+  // Measured from the frame: 92% of the visible scene was one green.
+  //
+  // The bowl is where the city is, so the ramp covers the bowl and leaves the
+  // outer ridge to the rock blend. CBD_FLOOR_M is the altitude of the developed
+  // shelf; BOWL_SPAN_M is the rise across it.
+  const t = THREE.MathUtils.clamp((height - CBD_FLOOR_M) / BOWL_SPAN_M, 0, 1);
   const base = t < 0.5 ? LOW.clone().lerp(MID, t * 2) : MID.clone().lerp(HIGH, (t - 0.5) * 2);
 
   // Blend toward rock by how far the surface tips away from flat.
