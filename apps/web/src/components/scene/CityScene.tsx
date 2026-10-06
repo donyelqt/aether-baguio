@@ -5,6 +5,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { type TimeScale, useHud } from '../../state/hud';
+import { Buildings } from './Buildings';
 import { CameraRig } from './CameraRig';
 import { skyColors, sunPosition } from './DayNight';
 import { Landmarks } from './Landmarks';
@@ -136,6 +137,7 @@ export function CityScene() {
       {process.env.NODE_ENV !== 'production' && <SceneProbe />}
       <CameraRig />
       <Terrain />
+      <Buildings />
       <OsmCity />
       <Landmarks />
     </>
