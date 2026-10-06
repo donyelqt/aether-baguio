@@ -72,7 +72,7 @@ export function sunPosition(dayOfYear: number, localHour: number): SunState {
   return { x, y, z, daylight };
 }
 
-/** Sky and light colours interpolated across the day. */
+/** Sky and light colours across the day. */
 export function skyColors(daylight: number): {
   sky: string;
   fog: string;
@@ -80,22 +80,35 @@ export function skyColors(daylight: number): {
   ambient: number;
   sunIntensity: number;
 } {
-  if (daylight > 0.5) {
-    const t = (daylight - 0.5) / 0.5;
+  const d = Math.max(0, Math.min(1, daylight));
+
+  // One continuous ramp rather than a day branch and a night branch. Two
+  // branches met at a 0.35 step in ambient, which showed as a visible pop every
+  // time the sun crossed the horizon.
+  //
+  // The night floor is deliberately non-zero. An earlier floor of 0.10 with no
+  // tone mapping measured at a mean luminance of 3.5/255: the city was
+  // unreadable for roughly a third of every simulated day. A lit city at night
+  // is dim and cool, not black.
+  const ambient = 0.42 + 0.28 * d;
+  const sunIntensity = 0.2 + 2.3 * d;
+
+  if (d > 0.5) {
     return {
       sky: '#87b8e0',
       fog: '#a8c4d8',
       sun: '#fff6e0',
-      ambient: 0.35 + 0.35 * t,
-      sunIntensity: 1.6 + 0.9 * t,
+      ambient,
+      sunIntensity,
     };
   }
-  const t = daylight / 0.5;
+
+  // Warm low sun through dawn and dusk, cooling toward deep night.
   return {
-    sky: '#0a1024',
-    fog: '#141c33',
+    sky: '#101a33',
+    fog: '#1b2640',
     sun: '#ffb877',
-    ambient: 0.1 + 0.25 * t,
-    sunIntensity: 0.15 + 1.45 * t,
+    ambient,
+    sunIntensity,
   };
 }

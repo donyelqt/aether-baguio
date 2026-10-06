@@ -3,6 +3,7 @@
 import { buildLandmarks, buildRoadGraph, createProjector } from '@aether/shared-types';
 import { Canvas } from '@react-three/fiber';
 import { Suspense } from 'react';
+import * as THREE from 'three';
 import { Hud } from '../components/Hud';
 import { CityScene } from '../components/scene/CityScene';
 
@@ -21,10 +22,16 @@ export default function Page() {
         gl={{
           antialias: true,
           powerPreference: 'high-performance',
-          // Required for screenshot verification: without it the drawing buffer
-          // is discarded after compositing, so a canvas readback or screenshot
-          // captures black rather than the rendered frame.
-          preserveDrawingBuffer: true,
+          // ACES rolls off highlights instead of clipping them. Without tone
+          // mapping a sun intensity of 2.5 drives lit surfaces past 1.0 and they
+          // flatten to white, which is what made every landmark read as a
+          // featureless silhouette at noon.
+          toneMapping: THREE.ACESFilmicToneMapping,
+          toneMappingExposure: 1.0,
+          // Verification only. Keeping the drawing buffer alive costs a copy
+          // every frame, so it is dev-only; production screenshots come from
+          // the composited canvas instead.
+          preserveDrawingBuffer: process.env.NODE_ENV !== 'production',
         }}
       >
         <Suspense fallback={null}>
