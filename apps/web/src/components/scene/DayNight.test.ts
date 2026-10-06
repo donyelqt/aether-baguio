@@ -63,4 +63,29 @@ describe('sky colors', () => {
       previous = sunIntensity;
     }
   });
+
+  it('keeps night dim but legible, never black', () => {
+    // Regression: ambient fell to 0.10 at night and, with no tone mapping, the
+    // frame measured a mean luminance of 3.5/255 — the city was unreadable for
+    // roughly a third of every simulated day.
+    const night = skyColors(0);
+    expect(night.ambient).toBeGreaterThanOrEqual(0.4);
+    expect(night.sunIntensity).toBeGreaterThan(0.15);
+  });
+
+  it('keeps the day-to-night luminance swing within a readable ratio', () => {
+    // Measured before the fix: noon 123 vs night 3.5, a 35x swing.
+    const noon = skyColors(1);
+    const night = skyColors(0);
+    const ratio = (noon.sunIntensity + noon.ambient) / (night.sunIntensity + night.ambient);
+    expect(ratio).toBeLessThan(8);
+  });
+
+  it('has no discontinuity at the day/night boundary', () => {
+    // The branch at daylight > 0.5 must not produce a visible step.
+    const below = skyColors(0.4999);
+    const above = skyColors(0.5001);
+    expect(Math.abs(below.ambient - above.ambient)).toBeLessThan(0.05);
+    expect(Math.abs(below.sunIntensity - above.sunIntensity)).toBeLessThan(0.05);
+  });
 });
