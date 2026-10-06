@@ -143,12 +143,21 @@ describe('landmarks', () => {
     }
   });
 
-  it('gives terrain features zero height and structures positive height', () => {
+  it('gives every landmark a height consistent with its kind', () => {
+    // Ground-level features render as flat slabs, whatever their category. A
+    // commercial corridor is a surface, not a block: modelling it with height
+    // put a building in the carriageway it names.
+    const groundLevel = new Set([
+      'burnham-park',
+      'camp-john-hay',
+      'mines-view-park',
+      'session-road',
+    ]);
     for (const l of landmarks) {
-      if (l.kind === 'park' || l.kind === 'nature') {
-        expect(l.height).toBe(0);
+      if (groundLevel.has(l.id)) {
+        expect(l.height, `${l.id} should be flat`).toBe(0);
       } else {
-        expect(l.height).toBeGreaterThan(0);
+        expect(l.height, `${l.id} should have height`).toBeGreaterThan(0);
       }
     }
   });

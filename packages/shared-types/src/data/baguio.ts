@@ -45,8 +45,11 @@ export const LANDMARKS: LandmarkSpec[] = [
     name: 'Burnham Park',
     kind: 'park',
     at: { lat: 16.4080101, lon: 120.5959849 },
-    halfWidth: 180,
-    halfDepth: 150,
+    // Real extent is roughly 656 m x 393 m. An earlier 360 x 300 m figure
+    // swallowed the Athletic Bowl footprint entirely, putting a stadium
+    // inside a lawn.
+    halfWidth: 328,
+    halfDepth: 196,
     height: 0,
   },
   {
@@ -68,15 +71,6 @@ export const LANDMARKS: LandmarkSpec[] = [
     height: 14,
   },
   {
-    id: 'session-road',
-    name: 'Session Road',
-    kind: 'commercial',
-    at: { lat: 16.4125044, lon: 120.5975059 },
-    halfWidth: 60,
-    halfDepth: 18,
-    height: 6,
-  },
-  {
     id: 'athletic-bowl',
     name: 'Baguio Athletic Bowl',
     kind: 'civic',
@@ -90,6 +84,8 @@ export const LANDMARKS: LandmarkSpec[] = [
     name: 'SM City Baguio',
     kind: 'commercial',
     at: { lat: 16.408943, lon: 120.599174 },
+    // Real mall block is about 110 m x 90 m. Growing it to escape the
+    // clearance rule makes the problem worse, not better.
     halfWidth: 55,
     halfDepth: 45,
     height: 24,
@@ -104,10 +100,28 @@ export const LANDMARKS: LandmarkSpec[] = [
     height: 16,
   },
   {
+    // The commercial street corridor itself, not a building. Modelled as a
+    // low flat slab so it reads as the dense retail strip lining Session Road
+    // rather than a block sitting in the carriageway — which is what a box on
+    // this centre line produced.
+    id: 'session-road',
+    name: 'Session Road',
+    kind: 'commercial',
+    at: { lat: 16.4125044, lon: 120.5975059 },
+    halfWidth: 120,
+    halfDepth: 14,
+    height: 0,
+  },
+  {
+    // Distinct institution from University of Baguio: this one fronts Governor
+    // Pack Road in the middle of the CBD.
     id: 'university-of-the-cordilleras',
     name: 'University of the Cordilleras',
     kind: 'civic',
-    at: { lat: 16.4084547, lon: 120.5979282 },
+    // Nominatim places UC on Governor Pack Road. The road network here runs
+    // Magsaysay just east of that point, so the campus is anchored west of it
+    // to keep the two from overlapping.
+    at: { lat: 16.4084547, lon: 120.5969 },
     halfWidth: 38,
     halfDepth: 32,
     height: 20,
@@ -171,7 +185,7 @@ export const ROADS: RoadSpec[] = [
     id: 'magsaysay-spur',
     roadClass: 'local',
     path: [
-      { lat: 16.4048, lon: 120.5992 },
+      { lat: 16.4048, lon: 120.5981 },
       { lat: 16.4043, lon: 120.5991 },
     ],
   },
@@ -190,11 +204,11 @@ export const ROADS: RoadSpec[] = [
     roadClass: 'local',
     path: [
       { lat: 16.4080101, lon: 120.5959532 },
-      { lat: 16.4080101, lon: 120.5993 },
+      // Joins Magsaysay where it now runs, west of the SM City block.
+      { lat: 16.4080101, lon: 120.5982 },
     ],
   },
   {
-    // Arnaiz meets Commodore at the eastern approach to Camp John Hay.
     id: 'commodore-spur',
     roadClass: 'local',
     path: [
@@ -209,7 +223,10 @@ export const ROADS: RoadSpec[] = [
     roadClass: 'collector',
     path: [
       { lat: 16.4125044, lon: 120.5975059 },
-      { lat: 16.412727, lon: 120.5985306 },
+      // Passes beside the Cathedral rather than through it. Terminating on the
+      // landmark's own coordinate put an 11 m carriageway inside a 44 m footprint.
+      { lat: 16.41225, lon: 120.59915 },
+      { lat: 16.41165, lon: 120.59955 },
       { lat: 16.4107, lon: 120.5981 },
       { lat: 16.4146, lon: 120.5991 },
       { lat: 16.4168, lon: 120.5998 },
@@ -235,7 +252,7 @@ export const ROADS: RoadSpec[] = [
       { lat: 16.4118, lon: 120.6021 },
       { lat: 16.4109, lon: 120.5996 },
       { lat: 16.4092, lon: 120.5984 },
-      { lat: 16.4075088, lon: 120.5959532 },
+      { lat: 16.4075, lon: 120.5952 },
     ],
   },
   {
@@ -245,8 +262,10 @@ export const ROADS: RoadSpec[] = [
     path: [
       { lat: 16.4118, lon: 120.6021 },
       { lat: 16.4112, lon: 120.5996 },
-      { lat: 16.4080101, lon: 120.5993 },
-      { lat: 16.4048, lon: 120.5992 },
+      // Runs west of Burnham's east edge. At lon 120.5993 it passed 62 m from
+      // SM City Baguio's centre, cutting through the mall footprint.
+      { lat: 16.4080101, lon: 120.5982 },
+      { lat: 16.4048, lon: 120.5981 },
       { lat: 16.4024, lon: 120.5996 },
     ],
   },
@@ -266,9 +285,14 @@ export const ROADS: RoadSpec[] = [
     id: 'harrison-rd',
     roadClass: 'collector',
     path: [
-      { lat: 16.4075088, lon: 120.5959532 },
-      { lat: 16.4084, lon: 120.5925 },
+      // Stops north of the Athletic Bowl rather than on its centre point: a
+      // carriageway terminating inside the stadium footprint is what put three
+      // roads through one building.
       { lat: 16.4093, lon: 120.5892 },
+      { lat: 16.4084, lon: 120.5925 },
+      { lat: 16.4076, lon: 120.5943 },
+      // Rejoin the spur north of the Bowl, keeping the graph one component.
+      { lat: 16.4080101, lon: 120.5959532 },
     ],
   },
   {
@@ -310,9 +334,10 @@ export const ROADS: RoadSpec[] = [
     id: 'kis-rd',
     roadClass: 'local',
     path: [
-      { lat: 16.412727, lon: 120.5985306 },
+      // Meets Governor Pack where it passes the Cathedral, then runs south-west.
+      { lat: 16.41165, lon: 120.59955 },
       { lat: 16.4103, lon: 120.5972 },
-      { lat: 16.4075088, lon: 120.5959532 },
+      { lat: 16.4089, lon: 120.5966 },
     ],
   },
   {
@@ -322,7 +347,9 @@ export const ROADS: RoadSpec[] = [
     path: [
       { lat: 16.4118, lon: 120.6021 },
       { lat: 16.4102, lon: 120.6038 },
-      { lat: 16.408943, lon: 120.599174 },
+      // Stops at SM City Baguio's north-west corner. Terminating on the
+      // landmark's own coordinate ran an 8 m road through a 110 m footprint.
+      { lat: 16.40965, lon: 120.60085 },
     ],
   },
   {
@@ -332,7 +359,9 @@ export const ROADS: RoadSpec[] = [
     roadClass: 'local',
     path: [
       { lat: 16.4136, lon: 120.5914 },
-      { lat: 16.4138341, lon: 120.5914077 },
+      // Passes south of City Hall. Its own coordinate is a junction with Session
+      // Road, which put the junction in the middle of the building.
+      { lat: 16.41335, lon: 120.59075 },
       { lat: 16.4126, lon: 120.5908 },
       { lat: 16.4115, lon: 120.5905 },
     ],

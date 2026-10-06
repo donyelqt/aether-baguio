@@ -1,6 +1,12 @@
 'use client';
 
-import { buildLandmarks, createProjector, type Landmark } from '@aether/shared-types';
+import {
+  buildLandmarks,
+  buildRoadGraph,
+  clearLandmarksFromRoads,
+  createProjector,
+  type Landmark,
+} from '@aether/shared-types';
 import { useMemo } from 'react';
 import * as THREE from 'three';
 import { groundAt } from './Terrain';
@@ -29,7 +35,10 @@ const COLOR: Record<Landmark['kind'], number> = {
 const FLAT_THICKNESS_M = 0.6;
 
 const project = createProjector();
-const landmarks = buildLandmarks(project);
+// Clear structures off the carriageways before rendering: OSM places many buildings
+// on a street centre line, and a 90 m box straddling an 11 m road looks broken.
+const graph = buildRoadGraph(project);
+const landmarks = clearLandmarksFromRoads(buildLandmarks(project), graph.nodes, graph.segments);
 
 interface LandmarkMesh {
   landmark: Landmark;
