@@ -1,6 +1,6 @@
 'use client';
 
-import { BASE_ELEVATION_M, type Heightfield, RIDGE_HEIGHT_M } from '@aether/shared-types';
+import { BASE_ELEVATION_M, RIDGE_HEIGHT_M } from '@aether/shared-types';
 import * as THREE from 'three';
 
 /**
@@ -66,7 +66,7 @@ export function terrainColorAt(height: number, normalY: number): THREE.Color {
  * Normals are read back off the built geometry rather than recomputed, so the
  * shading can never disagree with what is actually rendered.
  */
-export function applyTerrainColours(geometry: THREE.BufferGeometry, field: Heightfield): void {
+export function applyTerrainColours(geometry: THREE.BufferGeometry): void {
   const position = geometry.attributes.position as THREE.BufferAttribute;
   const normal = geometry.attributes.normal as THREE.BufferAttribute;
   const colours = new Float32Array(position.count * 3);

@@ -4,6 +4,7 @@ import { buildRoadGraph, createProjector, RoadClass, WORLD_EXTENT_M } from '@aet
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import { type TimeScale, useHud } from '../../state/hud';
 import { CameraRig } from './CameraRig';
 import { skyColors, sunPosition } from './DayNight';
 import { Landmarks } from './Landmarks';
@@ -60,7 +61,7 @@ function Roads() {
  * Kept as a single component so the four cannot drift out of sync — four
  * independent effects would eventually disagree about what time it is.
  */
-function DayNightCycle({ paused }: { paused: boolean }) {
+function DayNightCycle({ paused, speed }: { paused: boolean; speed: TimeScale }) {
   const sunRef = useRef<THREE.DirectionalLight>(null);
   const ambientRef = useRef<THREE.AmbientLight>(null);
   const { scene, camera } = useThree();
@@ -85,7 +86,9 @@ function DayNightCycle({ paused }: { paused: boolean }) {
 
   useFrame((_, delta) => {
     if (!paused) {
-      clock.current.hours = (clock.current.hours + delta * HOURS_PER_SECOND) % 24;
+      // Time scale multiplies the view clock so the day cycle visibly runs
+      // faster, rather than the control being decorative.
+      clock.current.hours = (clock.current.hours + delta * HOURS_PER_SECOND * speed) % 24;
     }
     const { x, y, z, daylight } = sunPosition(172, clock.current.hours);
     const colors = skyColors(daylight);
@@ -136,11 +139,21 @@ function DayNightCycle({ paused }: { paused: boolean }) {
   );
 }
 
-export function CityScene({ paused = false }: { paused?: boolean }) {
+export function CityScene() {
+  // Read from the HUD store rather than a prop, so the pause control and the
+  // clock cannot disagree: there is one source and both read it.
+  const paused = useHud((s) => s.paused);
+  const timeScale = useHud((s) => s.timeScale);
+
   return (
     <>
-      <DayNightCycle paused={paused} />
-      <SceneProbe />
+      <DayNightCycle paused={paused} speed={timeScale} />
+      {/*
+        The probe paints a fixed black node at z-index 9999 over the top-left
+        corner. It exists for runtime verification and must not ship: gate it
+        the same way preserveDrawingBuffer is gated in page.tsx.
+      */}
+      {process.env.NODE_ENV !== 'production' && <SceneProbe />}
       <CameraRig />
       <Terrain />
       <Roads />

@@ -31,7 +31,7 @@ describe('terrain surface colour', () => {
     // signal. A constant surface gives zero spread in every channel.
     const field = generateHeightfield(WORLD_EXTENT_M, 64, 1337);
     const geo = buildTerrainGeometry(field);
-    applyTerrainColours(geo, field);
+    applyTerrainColours(geo);
 
     const colours = geo.attributes.color;
     if (colours === undefined) throw new Error('terrain has no colour attribute');
@@ -56,7 +56,7 @@ describe('terrain surface colour', () => {
     // which would put the wrong shading on the wrong ground.
     const field = generateHeightfield(WORLD_EXTENT_M, 32, 4242);
     const geo = buildTerrainGeometry(field);
-    applyTerrainColours(geo, field);
+    applyTerrainColours(geo);
 
     const position = geo.attributes.position;
     const normal = geo.attributes.normal;
@@ -77,8 +77,8 @@ describe('terrain surface colour', () => {
     const field = generateHeightfield(WORLD_EXTENT_M, 32, 99);
     const a = buildTerrainGeometry(field);
     const b = buildTerrainGeometry(field);
-    applyTerrainColours(a, field);
-    applyTerrainColours(b, field);
+    applyTerrainColours(a);
+    applyTerrainColours(b);
     expect(Array.from(a.attributes.color?.array ?? [])).toEqual(
       Array.from(b.attributes.color?.array ?? []),
     );
