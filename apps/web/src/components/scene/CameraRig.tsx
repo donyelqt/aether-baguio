@@ -3,8 +3,21 @@
 import { WORLD_EXTENT_M } from '@aether/shared-types';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useCallback, useEffect, useRef } from 'react';
-
+import { type TimeScale, useHud } from '../../state/hud';
 import { groundAt } from './Terrain';
+
+/**
+ * True when the event target can consume keyboard input itself.
+ *
+ * Buttons are focusable, so an operator who clicks a time-scale control and
+ * then presses W would otherwise have the camera silently swallow it. Form
+ * fields and contenteditable regions need excluding for the same reason.
+ */
+function isInteractiveTarget(target: HTMLElement | null): boolean {
+  if (target === null) return false;
+  if (/^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(target.tagName)) return true;
+  return target.isContentEditable;
+}
 
 /**
  * Observer camera — PRD FR-5.1.
@@ -66,6 +79,11 @@ export function CameraRig({ autoOrbit = false }: { autoOrbit?: boolean }) {
 
   const drag = useRef<{ button: number; lastX: number; lastY: number } | null>(null);
   const keys = useRef(new Set<string>());
+
+  // Pause and time-scale are owned by the HUD store, so the buttons and the
+  // keyboard shortcuts drive one source of truth rather than two.
+  const togglePause = useHud((s) => s.togglePause);
+  const setTimeScale = useHud((s) => s.setTimeScale);
 
   const applyToCamera = useCallback(() => {
     const s = state.current;
@@ -156,10 +174,9 @@ export function CameraRig({ autoOrbit = false }: { autoOrbit?: boolean }) {
   // --- keyboard ------------------------------------------------------
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      // Do not steal keys from form fields or scrollable panels.
-      const target = event.target as HTMLElement | null;
-      if (target !== null && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      if (isInteractiveTarget(event.target as HTMLElement | null)) return;
       keys.current.add(event.code);
+      // Space is a camera key here (PRD §4.1 pause), so stop the page scrolling.
       if (event.code === 'Space') event.preventDefault();
     };
     const onKeyUp = (event: KeyboardEvent) => keys.current.delete(event.code);
@@ -176,6 +193,36 @@ export function CameraRig({ autoOrbit = false }: { autoOrbit?: boolean }) {
       window.removeEventListener('blur', onBlur);
     };
   }, []);
+
+  // --- pause and time-scale shortcuts --------------------------------
+  // PRD §4.1 specifies Space to pause and 1/2/5/10 for time scale. Without
+  // these the HUD advertises controls that do nothing, so they live here beside
+  // the other keyboard handling rather than in the component that renders the
+  // buttons.
+  useEffect(() => {
+    const SCALE_KEYS: Readonly<Record<string, TimeScale>> = {
+      Digit1: 1,
+      Digit2: 2,
+      Digit5: 5,
+      Digit0: 10,
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (isInteractiveTarget(event.target as HTMLElement | null)) return;
+      if (event.code === 'Space') {
+        event.preventDefault();
+        togglePause();
+        return;
+      }
+      const scale = SCALE_KEYS[event.code];
+      if (scale !== undefined) setTimeScale(scale);
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+    // Zustand actions are stable references, so this re-binds once and the
+    // listener never sees a stale closure.
+  }, [togglePause, setTimeScale]);
 
   useFrame((_, delta) => {
     const s = state.current;

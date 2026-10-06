@@ -48,7 +48,7 @@ export function Terrain() {
   const geometry = useMemo(() => {
     const field = terrainField();
     const geo = buildTerrainGeometry(field);
-    applyTerrainColours(geo, field);
+    applyTerrainColours(geo);
     return geo;
   }, []);
   return (
