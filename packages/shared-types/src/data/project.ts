@@ -122,6 +122,147 @@ export function buildLandmarks(project: (p: LatLon) => { x: number; z: number })
   });
 }
 
+/** Metres of clearance kept between a landmark footprint and any road surface. */
+export const LANDMARK_ROAD_CLEARANCE_M = 6;
+
+/**
+ * Relaxation passes allowed when pushing a landmark clear of the network.
+ * Landmarks sit at junctions, so one pass per crossing is typical; the cap
+ * stops a pathological layout from looping.
+ */
+export const MAX_CLEARANCE_PASSES = 400;
+
+/**
+ * Fraction of the remaining overlap resolved per pass.
+ * Below 1.0 so a landmark at a junction settles instead of oscillating between
+ * the roads it is being pushed away from.
+ */
+export const CLEARANCE_DAMPING = 0.6;
+
+/**
+ * Pushes landmarks clear of nearby roads.
+ *
+ * Landmark coordinates come from OSM and frequently sit *on* a street centre
+ * line — that is where Nominatim places a building whose address is the street.
+ * Rendered as-is, a 90 m wide box straddles an 8–16 m road and the road visibly
+ * runs through the building.
+ *
+ * Each landmark is nudged along the perpendicular of its nearest road until its
+ * footprint clears the carriageway by `LANDMARK_ROAD_CLEARANCE_M`. Flat features
+ * (parks, terrain) are left alone: a park meeting a road is correct, and
+ * moving one would break the layout it defines.
+ */
+export function clearLandmarksFromRoads(
+  landmarks: Landmark[],
+  nodes: readonly RoadNode[],
+  segments: readonly RoadSegment[],
+): Landmark[] {
+  const resolved = new Map<number, RoadNode>();
+  for (const n of nodes) resolved.set(n.id, n);
+
+  return landmarks.map((landmark) => {
+    // Flat features are left in place. A park or a street-level plaza meeting a
+    // road is correct, and a zero-height slab is a ground overlay, not a
+    // building that could be shoved off its centre line.
+    const flat = landmark.kind === 'park' || landmark.kind === 'nature' || landmark.height === 0;
+    if (flat) return landmark;
+
+    let x = landmark.x;
+    let z = landmark.z;
+    const reach = Math.hypot(landmark.halfWidth, landmark.halfDepth);
+    // Start strict. Dropped to centre-only if the strict pass cannot settle,
+    // which is the signature of a block enclosed by streets.
+    let relaxFull = true;
+
+    // Landmarks sit at junctions where several roads meet, so stepping clear of
+    // one can land on another. Push clear of all of them, a little at a time.
+    //
+    // Damping matters: moving the full deficit in one step overshoots a road it
+    // has just cleared and sends the landmark orbiting outward forever. A
+    // fraction of the deficit per pass converges; the full amount does not.
+    for (let pass = 0; pass < MAX_CLEARANCE_PASSES; pass++) {
+      const stepsTaken = pass;
+      let worstDeficit = 0;
+      let pushX = 0;
+      let pushZ = 0;
+
+      for (const seg of segments) {
+        const a = resolved.get(seg.from);
+        const b = resolved.get(seg.to);
+        if (a === undefined || b === undefined) continue;
+
+        const dx = b.x - a.x;
+        const dz = b.z - a.z;
+        const lenSq = dx * dx + dz * dz;
+        const t =
+          lenSq === 0 ? 0 : Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.z) * dz) / lenSq));
+        const cx = a.x + t * dx;
+        const cz = a.z + t * dz;
+        const dist = Math.hypot(x - cx, z - cz);
+
+        const halfWidth = (ROAD_WIDTH_M[seg.roadClass] ?? 8) / 2;
+        // Two tiers. First try to clear the whole footprint, which is what a
+        // free-standing landmark wants: a road should not cross a lawn either.
+        // If the block is enclosed by streets on several sides — SM City Baguio
+        // sits in one — no position satisfies that, so fall back to keeping
+        // roads off the centre, which is the difference between a building and
+        // a building with a road through it.
+        const fullClear = reach + halfWidth + LANDMARK_ROAD_CLEARANCE_M;
+        const centreClear = halfWidth + LANDMARK_ROAD_CLEARANCE_M;
+        const target = relaxFull ? fullClear : centreClear;
+        const deficit = target - dist;
+        if (deficit <= 0) continue;
+
+        // Unit vector from the road toward the landmark; pushing along it moves
+        // the landmark directly away from this segment.
+        let nx = x - cx;
+        let nz = z - cz;
+        const nLen = Math.hypot(nx, nz);
+        if (nLen < 1e-6) {
+          // Exactly on the centreline: fall back to the road's perpendicular.
+          nx = -dz;
+          nz = dx;
+          const pLen = Math.hypot(nx, nz);
+          if (pLen < 1e-6) continue;
+          nx /= pLen;
+          nz /= pLen;
+        } else {
+          nx /= nLen;
+          nz /= nLen;
+        }
+
+        // Accumulate the deepest offender's direction, weighted by its share of
+        // the total, so several roads contribute one coherent step.
+        pushX += nx * deficit;
+        pushZ += nz * deficit;
+        worstDeficit = Math.max(worstDeficit, deficit);
+      }
+
+      if (worstDeficit === 0) break; // clear of every road
+
+      if (stepsTaken >= MAX_CLEARANCE_PASSES / 2 && relaxFull) {
+        // Halfway through with no sign of settling: this landmark is walled in.
+        // Switch to the weaker rule and let the remainder of the budget resolve it.
+        relaxFull = false;
+        x = landmark.x;
+        z = landmark.z;
+        continue;
+      }
+
+      const pushLen = Math.hypot(pushX, pushZ);
+      if (pushLen < 1e-6) break; // opposing roads, no consistent direction
+      const step = Math.min(worstDeficit, pushLen) * CLEARANCE_DAMPING;
+      x += (pushX / pushLen) * step;
+      z += (pushZ / pushLen) * step;
+
+      if (step < 0.001) break; // converged to sub-centimetre
+    }
+
+    if (x === landmark.x && z === landmark.z) return landmark;
+    return { ...landmark, x, z };
+  });
+}
+
 /** Smallest axis-aligned bounds containing every road node and landmark. */
 export function worldBounds(nodes: RoadNode[], landmarks: Landmark[]) {
   let minX = Infinity;
