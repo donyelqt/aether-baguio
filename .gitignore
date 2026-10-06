@@ -45,3 +45,6 @@ docs/architecture-scaffold.md
 # the .gitkeep stays tracked so the directory survives.
 data/raw/*
 !data/raw/.gitkeep
+
+# OSM extraction scratch (source data is committed; tiles are not reproducible artifacts)
+.osm-scratch/

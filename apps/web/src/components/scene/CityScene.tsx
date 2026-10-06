@@ -1,6 +1,6 @@
 'use client';
 
-import { buildRoadGraph, createProjector, RoadClass, WORLD_EXTENT_M } from '@aether/shared-types';
+import { createProjector, WORLD_EXTENT_M } from '@aether/shared-types';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
@@ -8,7 +8,7 @@ import { type TimeScale, useHud } from '../../state/hud';
 import { CameraRig } from './CameraRig';
 import { skyColors, sunPosition } from './DayNight';
 import { Landmarks } from './Landmarks';
-import { buildRoadGeometry, ROAD_COLOR } from './roads';
+import { OsmCity } from './OsmCity';
 import { SceneProbe } from './SceneProbe';
 import { Terrain } from './Terrain';
 
@@ -27,9 +27,6 @@ import { Terrain } from './Terrain';
 const HOURS_PER_SECOND = 0.9;
 
 const project = createProjector();
-const graph = buildRoadGraph(project);
-
-const ROAD_CLASSES = [RoadClass.ARTERIAL, RoadClass.COLLECTOR, RoadClass.LOCAL] as const;
 
 /** Where the camera orbits, and the point aerial perspective is measured from. */
 const FOCUS = new THREE.Vector3(200, 0, 300);
@@ -37,23 +34,6 @@ const FOCUS = new THREE.Vector3(200, 0, 300);
 /** Shadow map resolution, and the world-space size of one texel within it. */
 const SHADOW_MAP_SIZE = 2048;
 const SHADOW_TEXEL_M = WORLD_EXTENT_M / SHADOW_MAP_SIZE;
-
-function Roads() {
-  const geometries = useMemo(
-    () => ROAD_CLASSES.map((rc) => buildRoadGeometry(graph.nodes, graph.segments, rc)),
-    [],
-  );
-
-  return (
-    <group>
-      {ROAD_CLASSES.map((rc, i) => (
-        <mesh key={rc} geometry={geometries[i]} receiveShadow>
-          <meshStandardMaterial color={ROAD_COLOR[rc]} roughness={0.9} metalness={0} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
 
 /**
  * Drives sun, ambient light, sky, and fog from one clock.
@@ -156,7 +136,7 @@ export function CityScene() {
       {process.env.NODE_ENV !== 'production' && <SceneProbe />}
       <CameraRig />
       <Terrain />
-      <Roads />
+      <OsmCity />
       <Landmarks />
     </>
   );
