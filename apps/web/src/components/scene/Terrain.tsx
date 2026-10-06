@@ -8,6 +8,7 @@ import {
 } from '@aether/shared-types';
 import { useMemo } from 'react';
 import { buildTerrainGeometry } from './terrainGeometry';
+import { applyTerrainColours } from './terrainSurface';
 
 /**
  * Terrain surface.
@@ -44,10 +45,17 @@ export function groundAt(x: number, z: number): number {
 export function Terrain() {
   // Geometry comes from the shared builder so the test suite exercises the
   // same code path the renderer does.
-  const geometry = useMemo(() => buildTerrainGeometry(terrainField()), []);
+  const geometry = useMemo(() => {
+    const field = terrainField();
+    const geo = buildTerrainGeometry(field);
+    applyTerrainColours(geo, field);
+    return geo;
+  }, []);
   return (
     <mesh geometry={geometry} receiveShadow>
-      <meshStandardMaterial color="#5f7d54" roughness={0.95} metalness={0} />
+      {/* vertexColors lets the altitude and slope ramp reach the material; the
+          base colour is only a fallback before the attribute is read. */}
+      <meshStandardMaterial vertexColors color="#5f7d54" roughness={0.95} metalness={0} />
     </mesh>
   );
 }
