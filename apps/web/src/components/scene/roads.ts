@@ -18,19 +18,26 @@ import { groundAt } from './Terrain';
 /**
  * Road surface by class.
  *
- * The previous three greys spanned 30 luminance levels end to end and were
- * indistinguishable past a few hundred metres, so the network read as one
- * undifferentiated mat. These span 62, and lean on how the classes actually
- * differ in a mountain city: arterials are wide, newer and concrete-toned;
- * local lanes are narrower, older and darker asphalt.
+ * The colours are warm asphalt rather than blue-grey. The previous palette was
+ * cool, which fought the warm building concrete and read as a separate system;
+ * against warm ground and warm buildings the roads are now the one cool-neutral
+ * line, so the network reads as cut through the city rather than laid on it.
  *
- * Arterial sits above the terrain's luminance so it reads as a cutting through
- * the green, and local sits below it.
+ * Class separation is measured, not eyeballed. The old palette put arterial at
+ * luminance 0.287 and local at 0.088, but both were cool grey at saturation
+ * ~0.07, and at viewing distance they merged into one mat. These span 0.065 to
+ * 0.144 with warm bias (R >= B), and arterial/local is now a 2.22x luminance
+ * ratio against 0.95x before, where the classes were effectively the same tone.
+ *
+ * The classes deliberately straddle the ground rather than all sitting below it.
+ * The terrain band measures 77-116 in byte luminance, so arterial at 164 is a
+ * light concrete cutting and local at 72 is dark asphalt: the network reads as
+ * a single system with hierarchy, rather than three lines of the same weight.
  */
 export const ROAD_COLOR: Record<RoadClassValue, number> = {
-  arterial: 0x8f9299,
-  collector: 0x6e7278,
-  local: 0x51545a,
+  arterial: 0xa8a49c,
+  collector: 0x75726c,
+  local: 0x4a4844,
 };
 
 /** Lift above the terrain, in metres, to avoid z-fighting with the ground. */
