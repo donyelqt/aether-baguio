@@ -26,17 +26,31 @@ export interface BuildingMeshes {
 /**
  * Per-band material.
  *
- * Roughness is high throughout: this is a town of painted concrete, asphalt
- * and corrugated metal, not glass. The commercial band is a touch smoother to
- * catch the sun and read as a distinct CBD material.
+ * The previous palette sat at 0.07-0.13 saturation across all six bands, so the
+ * city rendered as one undifferentiated cream mass. Saturation is now 0.14-0.24,
+ * and the bands are separated by measurement rather than by eye: every pair
+ * differs by a luminance ratio above 1.22 or a hue delta above 25 degrees, except
+ * religious against default and residential, which are 30 buildings between them
+ * (0.2% of the city). Luminance alone cannot separate five bands along one axis,
+ * so the cool civic and commercial bands are split by hue from the warm bulk.
+ *
+ * The palette is weighted by real band counts. `default` is 80.3% of footprints,
+ * so its warm concrete sets the dominant read; `residential` is 14.1% and is
+ * pulled lighter to sit apart from it; `civic` and `commercial` go cool
+ * blue-grey at hue 211-215, so institutional and CBD mass read as a distinct
+ * district against the warm residential bulk at hue 32-38.
+ *
+ * Roughness stays high throughout: this is a town of painted concrete, asphalt
+ * and corrugated metal, not glass. Commercial is a touch smoother to catch the
+ * sun and read as a CBD material.
  */
-const BAND_STYLE: Record<string, { color: number; roughness: number; metalness: number }> = {
-  residential: { color: 0xd8cdbc, roughness: 0.92, metalness: 0.0 },
-  default: { color: 0xcfc5b6, roughness: 0.93, metalness: 0.0 },
-  civic: { color: 0xc4bfb2, roughness: 0.88, metalness: 0.0 },
-  religious: { color: 0xdcd3c2, roughness: 0.85, metalness: 0.0 },
-  commercial: { color: 0xb9bfc6, roughness: 0.7, metalness: 0.05 },
-  utility: { color: 0x9a958c, roughness: 0.95, metalness: 0.0 },
+export const BAND_STYLE: Record<string, { color: number; roughness: number; metalness: number }> = {
+  default: { color: 0xcbbfab, roughness: 0.93, metalness: 0.0 },
+  residential: { color: 0xe6d6c4, roughness: 0.92, metalness: 0.0 },
+  civic: { color: 0xbccde2, roughness: 0.88, metalness: 0.0 },
+  religious: { color: 0xd9c9a6, roughness: 0.85, metalness: 0.0 },
+  commercial: { color: 0x9fadc0, roughness: 0.7, metalness: 0.05 },
+  utility: { color: 0x8a7f72, roughness: 0.95, metalness: 0.0 },
 };
 
 function toGeometry(mesh: BandMesh): THREE.BufferGeometry {
