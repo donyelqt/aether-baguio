@@ -30,8 +30,12 @@ const graph = buildRoadGraph(project);
 
 const ROAD_CLASSES = [RoadClass.ARTERIAL, RoadClass.COLLECTOR, RoadClass.LOCAL] as const;
 
-/** Distance the observer camera sits from the city centre; drives fog placement. */
-const CAMERA_DISTANCE_M = 2100;
+/** Where the camera orbits, and the point aerial perspective is measured from. */
+const FOCUS = new THREE.Vector3(200, 0, 300);
+
+/** Shadow map resolution, and the world-space size of one texel within it. */
+const SHADOW_MAP_SIZE = 2048;
+const SHADOW_TEXEL_M = WORLD_EXTENT_M / SHADOW_MAP_SIZE;
 
 function Roads() {
   const geometries = useMemo(
@@ -59,14 +63,16 @@ function Roads() {
 function DayNightCycle({ paused }: { paused: boolean }) {
   const sunRef = useRef<THREE.DirectionalLight>(null);
   const ambientRef = useRef<THREE.AmbientLight>(null);
-  const { scene } = useThree();
+  const { scene, camera } = useThree();
 
   // Start at 08:00 on the June solstice: long shadows, sun well up.
   const clock = useRef({ hours: 8 });
-  const fog = useMemo(
-    () => new THREE.Fog('#a8c4d8', CAMERA_DISTANCE_M, CAMERA_DISTANCE_M * 2.6),
-    [],
-  );
+  // Fog distances track the live camera radius. The previous fixed 2100-5460 m
+  // band was calibrated to a constant that stopped existing when the camera
+  // became user-controlled: below 2100 m there was no atmosphere at all, and
+  // at full zoom-out the city was 100% fogged. Aerial perspective should be a
+  // property of how far you are looking, not a fixed world distance.
+  const fog = useMemo(() => new THREE.Fog('#a8c4d8', 1, 1), []);
 
   useEffect(() => {
     scene.fog = fog;
@@ -95,6 +101,12 @@ function DayNightCycle({ paused }: { paused: boolean }) {
     }
     if (scene.background instanceof THREE.Color) scene.background.set(colors.sky);
     fog.color.set(colors.fog);
+
+    // Aerial perspective scales to how far the camera is actually looking, so
+    // depth reads at street level and ridgelines still separate from across the
+    // valley. Near is a fraction of the view distance, far well beyond it.
+    fog.near = camera.position.distanceTo(FOCUS) * 0.55;
+    fog.far = camera.position.distanceTo(FOCUS) * 2.6;
   });
 
   return (
@@ -105,14 +117,20 @@ function DayNightCycle({ paused }: { paused: boolean }) {
       <directionalLight
         ref={sunRef}
         castShadow
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={[SHADOW_MAP_SIZE, SHADOW_MAP_SIZE]}
         shadow-camera-left={-WORLD_EXTENT_M / 2}
         shadow-camera-right={WORLD_EXTENT_M / 2}
         shadow-camera-top={WORLD_EXTENT_M / 2}
         shadow-camera-bottom={-WORLD_EXTENT_M / 2}
         shadow-camera-near={100}
         shadow-camera-far={8000}
-        shadow-bias={-0.0005}
+        // Bias derived from the texel footprint rather than a magic number.
+        // The previous -0.0005 spanned 4.0 m of depth across a 7900 m range,
+        // which both over-corrects (peter-panning) and leaves acne on surfaces
+        // angled away from the light. normalBias is the one that matters for
+        // sloped terrain; the small constant handles the depth axis.
+        shadow-bias={-0.00005}
+        shadow-normalBias={SHADOW_TEXEL_M * 2}
       />
     </group>
   );
